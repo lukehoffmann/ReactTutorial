@@ -4,7 +4,7 @@ import './index.css'
 
 function Square (props) {
   return <button className='square' onClick={props.onClick}>
-    {props.value}
+    {props.move}
   </button>
 }
 
@@ -13,27 +13,30 @@ class Board extends React.Component {
     super(props)
     this.state = {
       squares: Array(9).fill(null),
-      xIsNext: true,
+      nextMove: 'X',
       winner: null
     }
   }
 
   handleClick (i) {
+    // is the game already over?
     if (this.state.winner) return
 
+    let nextMove = this.state.nextMove
     const squares = this.state.squares.slice()
+
+    // is the square already occupied?
     if (squares[i]) return
 
-    squares[i] = this.state.xIsNext ? 'X' : 'O'
-    this.setState({
-      squares: squares,
-      xIsNext: !this.state.xIsNext
-    })
+    // make the move and update the game state
+    squares[i] = nextMove
+    nextMove = nextMove === 'X' ? 'O' : 'X'
+    this.setState({squares: squares, nextMove: nextMove})
   }
 
   renderSquare (i) {
     return <Square
-      value={this.state.squares[i]}
+      move={this.state.squares[i]}
       onClick={() => this.handleClick(i)}
     />
   }
@@ -44,7 +47,7 @@ class Board extends React.Component {
     if (this.state.winner) {
       status = `Winner: ${this.state.winner}`
     } else {
-      status = `Next player: ${this.state.xIsNext ? 'X' : 'O'}`
+      status = `Next player: ${this.state.nextMove}`
     }
 
     return (
