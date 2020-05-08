@@ -2,20 +2,33 @@ import React from 'react'
 import ReactDOM from 'react-dom'
 import './index.css'
 
+/**
+ * A square in the tic-tac-toe board. Displays X, O, or empty
+ */
 function Square (props) {
   return <button className='square' onClick={props.onClick}>
     {props.move}
   </button>
 }
 
+/**
+ * The tic-tac-toe board
+ */
 class Board extends React.Component {
   constructor (props) {
     super(props)
     this.state = {
-      squares: Array(9).fill(null),
+      moves: Array(9).fill(null),
       nextMove: 'X',
       winner: null
     }
+  }
+
+  renderSquare (i) {
+    return <Square
+      move={this.state.moves[i]}
+      onClick={() => this.handleClick(i)}
+    />
   }
 
   handleClick (i) {
@@ -23,32 +36,23 @@ class Board extends React.Component {
     if (this.state.winner) return
 
     let nextMove = this.state.nextMove
-    const squares = this.state.squares.slice()
+    const moves = this.state.moves.slice()
 
     // is the square already occupied?
-    if (squares[i]) return
+    if (moves[i]) return
 
-    // make the move and update the game state
-    squares[i] = nextMove
-    nextMove = nextMove === 'X' ? 'O' : 'X'
-    this.setState({squares: squares, nextMove: nextMove})
-  }
-
-  renderSquare (i) {
-    return <Square
-      move={this.state.squares[i]}
-      onClick={() => this.handleClick(i)}
-    />
+    // otherwise make the move and update the game state
+    moves[i] = nextMove
+    this.setState({moves: moves})
+    this.setState({nextMove: nextMove === 'X' ? 'O' : 'X'})
+    this.setState({winner: this.calculateWinner(moves)})
   }
 
   render () {
-    this.state.winner = calculateWinner(this.state.squares)
-    let status
-    if (this.state.winner) {
-      status = `Winner: ${this.state.winner}`
-    } else {
-      status = `Next player: ${this.state.nextMove}`
-    }
+    const status =
+      (this.state.winner)
+        ? `Winner: ${this.state.winner}`
+        : `Next player: ${this.state.nextMove}`
 
     return (
       <div>
@@ -71,6 +75,25 @@ class Board extends React.Component {
       </div>
     )
   }
+
+  calculateWinner (moves) {
+    const winStates = [
+      [0, 1, 2],
+      [3, 4, 5],
+      [6, 7, 8],
+      [0, 3, 6],
+      [1, 4, 7],
+      [2, 5, 8],
+      [0, 4, 8],
+      [2, 4, 6]
+    ]
+    for (const [a, b, c] of winStates) {
+      if (moves[a] && moves[a] === moves[b] && moves[a] === moves[c]) {
+        return moves[a]
+      }
+    }
+    return null
+  }
 }
 
 class Game extends React.Component {
@@ -87,26 +110,6 @@ class Game extends React.Component {
       </div>
     )
   }
-}
-
-function calculateWinner (squares) {
-  const lines = [
-    [0, 1, 2],
-    [3, 4, 5],
-    [6, 7, 8],
-    [0, 3, 6],
-    [1, 4, 7],
-    [2, 5, 8],
-    [0, 4, 8],
-    [2, 4, 6]
-  ]
-  for (let i = 0; i < lines.length; i++) {
-    const [a, b, c] = lines[i]
-    if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
-      return squares[a]
-    }
-  }
-  return null
 }
 
 // ========================================
