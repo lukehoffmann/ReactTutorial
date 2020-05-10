@@ -54,50 +54,50 @@ class Game extends React.Component {
     this.state = {
       history: [{
         squares: Array(9).fill(null),
-        nextMove: 'X',
+        move: null,
         winner: null
-      }],
-      stepNumber: 0
+      }]
     }
   }
 
   handleClick (i) {
-    const history = this.state.history.slice(0, this.state.stepNumber + 1)
-    const current = history[history.length - 1]
+    const [previous] = this.state.history.slice(-1)
 
     // is the game already over?
-    if (current.winner) return
-
-    let nextMove = current.nextMove
-    const squares = current.squares.slice()
+    if (previous.winner) return
 
     // is the square already occupied?
-    if (squares[i]) return
+    if (previous.squares[i]) return
 
-    // otherwise make the move and add the game state to history
-    squares[i] = nextMove
+    // prepare the a new move
+    const squares = previous.squares.slice()
+    const move = previous.move === 'X' ? 'O' : 'X'
+    squares[i] = move
+    const winner = this.calculateWinner(squares)
+
+    // add this move to the game history
     this.setState({
-      history: history.concat([
-        {
-          squares: squares,
-          nextMove: nextMove === 'X' ? 'O' : 'X',
-          winner: this.calculateWinner(squares)
-        }]),
-      stepNumber: history.length
+      history: this.state.history.concat(
+        [{ squares: squares, move: move, winner: winner }]
+      )
     })
   }
 
-  jumpTo (stepNumber) {
-    this.setState({ stepNumber: stepNumber })
+  jumpTo (moveNumber) {
+    // slice the history back to the requested move
+    this.setState({
+      history: this.state.history.slice(0, moveNumber + 1)
+    })
   }
 
   render () {
-    const current = this.state.history[this.state.stepNumber]
+    // current move is always the last one
+    const [current] = this.state.history.slice(-1)
 
     const status =
       (current.winner)
         ? `Winner: ${current.winner}`
-        : `Next player: ${current.nextMove}`
+        : `Next player: ${current.move === 'X' ? 'O' : 'X'}`
 
     return <div className='game'>
       <div className='game-board'>
@@ -107,17 +107,21 @@ class Game extends React.Component {
           handleClick={(i) => this.handleClick(i)} />
       </div>
       <div className='game-info'>
-        <ol>
-          {this.state.history.map((move, stepNumber) => {
-            return <li key={stepNumber}>
-              <button onClick={() => this.jumpTo(stepNumber)}>
-                {(stepNumber)
-                  ? `Go to move #${stepNumber}`
-                  : `Go to game start`}
+        <div>History</div>
+        <ul>
+          <dt>Return to:</dt>
+          {this.state.history.map((move, moveNumber) => {
+            return <li key={moveNumber}>
+              <button onClick={() => this.jumpTo(moveNumber)}>
+                {(moveNumber === 0)
+                  ? `Game Start`
+                  : (move.winner)
+                    ? `Game Over (Winner: ${move.winner})`
+                    : `Move ${moveNumber} (${move.move})`}
               </button>
             </li>
           })}
-        </ol>
+        </ul>
       </div>
     </div>
   }
