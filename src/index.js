@@ -97,7 +97,9 @@ class Game extends React.Component {
     const status =
       (current.winner)
         ? `Winner: ${current.winner}`
-        : `Next player: ${current.move === 'X' ? 'O' : 'X'}`
+        : (this.state.history.length > 9)
+          ? `Draw`
+          : `Next player: ${current.move === 'X' ? 'O' : 'X'}`
 
     return <div className='game'>
       <div className='game-board'>
@@ -117,7 +119,9 @@ class Game extends React.Component {
                   ? `Game Start`
                   : (move.winner)
                     ? `Game Over (Winner: ${move.winner})`
-                    : `Move ${moveNumber} (${move.move})`}
+                    : (moveNumber === 9)
+                      ? `Game Over (Draw)`
+                      : `Move ${moveNumber} (${move.move})`}
               </button>
             </li>
           })}
