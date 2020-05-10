@@ -7,7 +7,7 @@ import './index.css'
  */
 function Square (props) {
   return <button
-    className={`square ${props.highlight ? ' square-last-move' : ''}`}
+    className={`square ${props.isCurrentMove ? ' square-last-move' : ''}`}
     onClick={props.onClick}>
     {props.symbol}
   </button>
@@ -17,33 +17,35 @@ function Square (props) {
  * The tic-tac-toe board
  */
 class Board extends React.Component {
-  renderSquare (i) {
+  renderSquare (row, column) {
+    const currentMove = this.props.move
+    const isCurrentMove = currentMove &&
+    currentMove.row === row &&
+    currentMove.column === column
+
     return <Square
-      symbol={this.props.squares[i]}
-      onClick={() => this.props.handleClick(i)}
-      highlight={i === this.props.lastMove}
+      key={`${row}, ${column}`}
+      symbol={this.props.squares[row][column]}
+      onClick={() => this.props.handleClick(row, column)}
+      isCurrentMove={isCurrentMove}
     />
   }
 
   render () {
+    let rows = [0, 1, 2]
+    let columns = [0, 1, 2]
+
     return (
       <div>
-        <div className='status'>{this.props.status}</div>
-        <div className='board-row'>
-          {this.renderSquare(0)}
-          {this.renderSquare(1)}
-          {this.renderSquare(2)}
+        <div className='status'>
+          {this.props.status}
         </div>
-        <div className='board-row'>
-          {this.renderSquare(3)}
-          {this.renderSquare(4)}
-          {this.renderSquare(5)}
-        </div>
-        <div className='board-row'>
-          {this.renderSquare(6)}
-          {this.renderSquare(7)}
-          {this.renderSquare(8)}
-        </div>
+
+        {rows.map((r) => {
+          return <div className='board-row' key={r}>
+            {columns.map((c) => { return this.renderSquare(r, c) })}
+          </div>
+        })}
       </div>
     )
   }
@@ -54,42 +56,42 @@ class Game extends React.Component {
     super(props)
     this.state = {
       history: [{
-        squares: Array(9).fill(null),
-        player: null,
-        move: null,
+        squares: Array(3).fill(Array(3).fill(null)), // row, column
+        move: { player: null, row: null, column: null },
         winner: null
       }]
     }
   }
 
-  handleClick (i) {
+  handleClick (row, column) {
     const [previous] = this.state.history.slice(-1)
 
     // is the game already over?
     if (previous.winner) return
 
     // is the square already occupied?
-    if (previous.squares[i]) return
+    if (previous.squares[row][column]) return
 
     // prepare the a new move
-    const squares = previous.squares.slice()
-    const player = previous.player === 'X' ? 'O' : 'X'
-    squares[i] = player
+    let move = {
+      row: row,
+      column: column,
+      player: previous.move.player === 'X' ? 'O' : 'X'
+    }
+    const squares = this.applyMoveToSquares(previous.squares, move)
     const winner = this.calculateWinner(squares)
 
     // add this move to the game history
-    this.setState({
-      history: this.state.history.concat(
-        [{ squares: squares, move: i, player: player, winner: winner }]
-      )
-    })
+    const newState = { squares: squares, move: move, winner: winner }
+    this.setState({ history: this.state.history.concat([newState]) })
   }
 
-  jumpTo (moveNumber) {
-    // slice the history back to the requested move
-    this.setState({
-      history: this.state.history.slice(0, moveNumber + 1)
-    })
+  applyMoveToSquares (squares, move) {
+    // make sure to copy the arrays we are modifying
+    let copy = squares.slice()
+    copy[move.row] = copy[move.row].slice()
+    copy[move.row][move.column] = move.player
+    return copy
   }
 
   render () {
@@ -107,47 +109,55 @@ class Game extends React.Component {
       <div className='game-board'>
         <Board
           squares={current.squares}
+          move={current.move}
           status={status}
-          lastMove={current.move}
-          handleClick={(i) => this.handleClick(i)} />
+          handleClick={(row, column) => this.handleClick(row, column)} />
       </div>
       <div className='game-info'>
         <div>History</div>
         <ul>
           <dt>Return to:</dt>
           {this.state.history.map((move, moveNumber) => {
-            return <li key={moveNumber}>
-              <button onClick={() => this.jumpTo(moveNumber)}>
-                {(moveNumber === 0)
-                  ? `Game Start`
-                  : (move.winner)
-                    ? `Game Over (Winner: ${move.winner})`
-                    : (moveNumber === 9)
-                      ? `Game Over (Draw)`
-                      : `Move ${moveNumber} (${move.player})`}
-              </button>
-            </li>
+            return <li key={moveNumber}>{this.renderJumpButton(move, moveNumber)}</li>
           })}
         </ul>
       </div>
     </div>
   }
 
+  renderJumpButton (move, moveNumber) {
+    const label = (moveNumber === 0) ? `Game Start`
+      : (move.winner) ? `Game Over (Winner: ${move.winner})`
+        : (moveNumber === 9) ? `Game Over (Draw)`
+          : `Move ${moveNumber} (${move.move.player})`
+
+    return <button onClick={() => this.jumpTo(moveNumber)}>{label}</button>
+  }
+
+  jumpTo (moveNumber) {
+    // slice the history back to the requested move
+    this.setState({
+      history: this.state.history.slice(0, moveNumber + 1)
+    })
+  }
+
   calculateWinner (squares) {
     // we can just check all of the known winning combos
-    const winStates = [
-      [0, 1, 2],
-      [3, 4, 5],
-      [6, 7, 8],
-      [0, 3, 6],
-      [1, 4, 7],
-      [2, 5, 8],
-      [0, 4, 8],
-      [2, 4, 6]
+    const rowsOfThree = [
+      [[0, 0], [0, 1], [0, 2]], // top row
+      [[1, 0], [1, 1], [1, 2]], // middle row
+      [[2, 0], [2, 1], [2, 2]], // bottom row
+      [[0, 0], [1, 0], [2, 0]], // left column
+      [[0, 1], [1, 1], [2, 1]], // middle column
+      [[0, 2], [1, 2], [2, 2]], // right column
+      [[0, 0], [1, 1], [2, 2]], // diagonal
+      [[0, 2], [1, 1], [2, 0]] // other diagonal
     ]
-    for (const [a, b, c] of winStates) {
-      if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
-        return squares[a]
+    for (const [[r1, c1], [r2, c2], [r3, c3]] of rowsOfThree) {
+      if (squares[r1][c1] &&
+        squares[r1][c1] === squares[r2][c2] &&
+        squares[r1][c1] === squares[r3][c3]) {
+        return squares[r1][c1]
       }
     }
     return null
