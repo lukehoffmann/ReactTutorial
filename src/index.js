@@ -6,7 +6,9 @@ import './index.css'
  * A square in the tic-tac-toe board. Displays X, O, or empty
  */
 function Square (props) {
-  return <button className='square' onClick={props.onClick}>
+  return <button
+    className='square'
+    onClick={props.onClick}>
     {props.move}
   </button>
 }
@@ -17,7 +19,7 @@ function Square (props) {
 class Board extends React.Component {
   renderSquare (i) {
     return <Square
-      move={this.props.moves[i]}
+      move={this.props.squares[i]}
       onClick={() => this.props.handleClick(i)}
     />
   }
@@ -51,59 +53,76 @@ class Game extends React.Component {
     super(props)
     this.state = {
       history: [{
-        moves: Array(9).fill(null),
+        squares: Array(9).fill(null),
         nextMove: 'X',
         winner: null
-      }]
+      }],
+      stepNumber: 0
     }
   }
 
   handleClick (i) {
-    const [current] = this.state.history.slice(-1)
+    const history = this.state.history.slice(0, this.state.stepNumber + 1)
+    const current = history[history.length - 1]
+
     // is the game already over?
     if (current.winner) return
 
     let nextMove = current.nextMove
-    const moves = current.moves.slice()
+    const squares = current.squares.slice()
 
     // is the square already occupied?
-    if (moves[i]) return
+    if (squares[i]) return
 
     // otherwise make the move and add the game state to history
-    moves[i] = nextMove
-    this.setState({history: this.state.history.concat([
-      {
-        moves: moves,
-        nextMove: nextMove === 'X' ? 'O' : 'X',
-        winner: this.calculateWinner(moves)
-      }
-    ])})
+    squares[i] = nextMove
+    this.setState({
+      history: history.concat([
+        {
+          squares: squares,
+          nextMove: nextMove === 'X' ? 'O' : 'X',
+          winner: this.calculateWinner(squares)
+        }]),
+      stepNumber: history.length
+    })
+  }
+
+  jumpTo (stepNumber) {
+    this.setState({ stepNumber: stepNumber })
   }
 
   render () {
-    const [current] = this.state.history.slice(-1)
+    const current = this.state.history[this.state.stepNumber]
+
     const status =
       (current.winner)
         ? `Winner: ${current.winner}`
         : `Next player: ${current.nextMove}`
 
-    return (
-      <div className='game'>
-        <div className='game-board'>
-          <Board
-            moves={current.moves}
-            status={status}
-            handleClick={(i) => this.handleClick(i)} />
-        </div>
-        <div className='game-info'>
-          <div>{/* status */}</div>
-          <ol>{/* TODO */}</ol>
-        </div>
+    return <div className='game'>
+      <div className='game-board'>
+        <Board
+          squares={current.squares}
+          status={status}
+          handleClick={(i) => this.handleClick(i)} />
       </div>
-    )
+      <div className='game-info'>
+        <ol>
+          {this.state.history.map((move, stepNumber) => {
+            return <li key={stepNumber}>
+              <button onClick={() => this.jumpTo(stepNumber)}>
+                {(stepNumber)
+                  ? `Go to move #${stepNumber}`
+                  : `Go to game start`}
+              </button>
+            </li>
+          })}
+        </ol>
+      </div>
+    </div>
   }
 
-  calculateWinner (moves) {
+  calculateWinner (squares) {
     // we can just check all of the known winning combos
     const winStates = [
       [0, 1, 2],
@@ -116,8 +135,8 @@ class Game extends React.Component {
       [2, 4, 6]
     ]
     for (const [a, b, c] of winStates) {
-      if (moves[a] && moves[a] === moves[b] && moves[a] === moves[c]) {
-        return moves[a]
+      if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
+        return squares[a]
       }
     }
     return null
