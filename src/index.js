@@ -7,9 +7,9 @@ import './index.css'
  */
 function Square (props) {
   return <button
-    className='square'
+    className={`square ${props.highlight ? ' square-last-move' : ''}`}
     onClick={props.onClick}>
-    {props.move}
+    {props.symbol}
   </button>
 }
 
@@ -19,8 +19,9 @@ function Square (props) {
 class Board extends React.Component {
   renderSquare (i) {
     return <Square
-      move={this.props.squares[i]}
+      symbol={this.props.squares[i]}
       onClick={() => this.props.handleClick(i)}
+      highlight={i === this.props.lastMove}
     />
   }
 
@@ -54,6 +55,7 @@ class Game extends React.Component {
     this.state = {
       history: [{
         squares: Array(9).fill(null),
+        player: null,
         move: null,
         winner: null
       }]
@@ -71,14 +73,14 @@ class Game extends React.Component {
 
     // prepare the a new move
     const squares = previous.squares.slice()
-    const move = previous.move === 'X' ? 'O' : 'X'
-    squares[i] = move
+    const player = previous.player === 'X' ? 'O' : 'X'
+    squares[i] = player
     const winner = this.calculateWinner(squares)
 
     // add this move to the game history
     this.setState({
       history: this.state.history.concat(
-        [{ squares: squares, move: move, winner: winner }]
+        [{ squares: squares, move: i, player: player, winner: winner }]
       )
     })
   }
@@ -99,13 +101,14 @@ class Game extends React.Component {
         ? `Winner: ${current.winner}`
         : (this.state.history.length > 9)
           ? `Draw`
-          : `Next player: ${current.move === 'X' ? 'O' : 'X'}`
+          : `Next player: ${current.player === 'X' ? 'O' : 'X'}`
 
     return <div className='game'>
       <div className='game-board'>
         <Board
           squares={current.squares}
           status={status}
+          lastMove={current.move}
           handleClick={(i) => this.handleClick(i)} />
       </div>
       <div className='game-info'>
@@ -121,7 +124,7 @@ class Game extends React.Component {
                     ? `Game Over (Winner: ${move.winner})`
                     : (moveNumber === 9)
                       ? `Game Over (Draw)`
-                      : `Move ${moveNumber} (${move.move})`}
+                      : `Move ${moveNumber} (${move.player})`}
               </button>
             </li>
           })}
