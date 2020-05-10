@@ -31,9 +31,12 @@ ol, ul {
   width: 34px;
 }
 
-.square-last-move {
-  outline: none;
+.square-current-move {
   font-weight: bold;
+}
+
+.square-winning-combo {
+  background: slateblue;
 }
 
 .square:focus {

@@ -6,8 +6,12 @@ import './index.css'
  * A square in the tic-tac-toe board. Displays X, O, or empty
  */
 function Square (props) {
+  let className = 'square'
+  if (props.isCurrentMove) className += ' square-current-move'
+  if (props.isWinningCombo) className += ' square-winning-combo'
+
   return <button
-    className={`square ${props.isCurrentMove ? ' square-last-move' : ''}`}
+    className={className}
     onClick={props.onClick}>
     {props.symbol}
   </button>
@@ -17,37 +21,39 @@ function Square (props) {
  * The tic-tac-toe board
  */
 class Board extends React.Component {
+  render () {
+    return (
+      <div>
+        <div className='status'>{this.props.status}</div>
+
+        {this.props.squares.map((sqRow, row) => {
+          return <div className='board-row' key={row}>
+            {sqRow.map((sqCol, column) => {
+              return this.renderSquare(row, column)
+            })}
+          </div>
+        })}
+      </div>
+    )
+  }
+
   renderSquare (row, column) {
-    const currentMove = this.props.move
-    const isCurrentMove = currentMove &&
-    currentMove.row === row &&
-    currentMove.column === column
+    const isCurrentMove =
+      this.props.move &&
+      this.props.move.row === row &&
+      this.props.move.column === column
+
+    const isWinningCombo =
+      this.props.winningCombo &&
+      this.props.winningCombo.map(([r, c]) => `${r}, ${c}`).includes(`${row}, ${column}`)
 
     return <Square
       key={`${row}, ${column}`}
       symbol={this.props.squares[row][column]}
       onClick={() => this.props.handleClick(row, column)}
       isCurrentMove={isCurrentMove}
+      isWinningCombo={isWinningCombo}
     />
-  }
-
-  render () {
-    let rows = [0, 1, 2]
-    let columns = [0, 1, 2]
-
-    return (
-      <div>
-        <div className='status'>
-          {this.props.status}
-        </div>
-
-        {rows.map((r) => {
-          return <div className='board-row' key={r}>
-            {columns.map((c) => { return this.renderSquare(r, c) })}
-          </div>
-        })}
-      </div>
-    )
   }
 }
 
@@ -61,6 +67,38 @@ class Game extends React.Component {
         winner: null
       }]
     }
+  }
+
+  render () {
+    // current move is always the last one
+    const [current] = this.state.history.slice(-1)
+
+    const status =
+      (current.winner)
+        ? `Winner: ${current.winner}`
+        : (this.state.history.length > 9)
+          ? `Draw`
+          : `Next player: ${current.player === 'X' ? 'O' : 'X'}`
+
+    return <div className='game'>
+      <div className='game-board'>
+        <Board
+          status={status}
+          squares={current.squares}
+          move={current.move}
+          winningCombo={current.winningCombo}
+          handleClick={(row, column) => this.handleClick(row, column)} />
+      </div>
+      <div className='game-info'>
+        <div>History</div>
+        <ul>
+          <dt>Return to:</dt>
+          {this.state.history.map((move, moveNumber) => {
+            return <li key={moveNumber}>{this.renderJumpButton(move, moveNumber)}</li>
+          })}
+        </ul>
+      </div>
+    </div>
   }
 
   handleClick (row, column) {
@@ -79,10 +117,10 @@ class Game extends React.Component {
       player: previous.move.player === 'X' ? 'O' : 'X'
     }
     const squares = this.applyMoveToSquares(previous.squares, move)
-    const winner = this.calculateWinner(squares)
+    const [ winner, winningCombo ] = this.calculateWinningRow(squares)
 
     // add this move to the game history
-    const newState = { squares: squares, move: move, winner: winner }
+    const newState = { squares, move, winner, winningCombo }
     this.setState({ history: this.state.history.concat([newState]) })
   }
 
@@ -92,37 +130,6 @@ class Game extends React.Component {
     copy[move.row] = copy[move.row].slice()
     copy[move.row][move.column] = move.player
     return copy
-  }
-
-  render () {
-    // current move is always the last one
-    const [current] = this.state.history.slice(-1)
-
-    const status =
-      (current.winner)
-        ? `Winner: ${current.winner}`
-        : (this.state.history.length > 9)
-          ? `Draw`
-          : `Next player: ${current.player === 'X' ? 'O' : 'X'}`
-
-    return <div className='game'>
-      <div className='game-board'>
-        <Board
-          squares={current.squares}
-          move={current.move}
-          status={status}
-          handleClick={(row, column) => this.handleClick(row, column)} />
-      </div>
-      <div className='game-info'>
-        <div>History</div>
-        <ul>
-          <dt>Return to:</dt>
-          {this.state.history.map((move, moveNumber) => {
-            return <li key={moveNumber}>{this.renderJumpButton(move, moveNumber)}</li>
-          })}
-        </ul>
-      </div>
-    </div>
   }
 
   renderJumpButton (move, moveNumber) {
@@ -141,7 +148,7 @@ class Game extends React.Component {
     })
   }
 
-  calculateWinner (squares) {
+  calculateWinningRow (squares) {
     // we can just check all of the known winning combos
     const rowsOfThree = [
       [[0, 0], [0, 1], [0, 2]], // top row
@@ -153,14 +160,16 @@ class Game extends React.Component {
       [[0, 0], [1, 1], [2, 2]], // diagonal
       [[0, 2], [1, 1], [2, 0]] // other diagonal
     ]
-    for (const [[r1, c1], [r2, c2], [r3, c3]] of rowsOfThree) {
-      if (squares[r1][c1] &&
-        squares[r1][c1] === squares[r2][c2] &&
-        squares[r1][c1] === squares[r3][c3]) {
-        return squares[r1][c1]
+    for (const combo of rowsOfThree) {
+      const [[r1, c1], [r2, c2], [r3, c3]] = combo
+      if (squares[r1][c1] && squares[r1][c1] === squares[r2][c2] && squares[r1][c1] === squares[r3][c3]) {
+        return [
+          squares[r1][c2],
+          combo
+        ]
       }
     }
-    return null
+    return [ null, null ]
   }
 }
 
